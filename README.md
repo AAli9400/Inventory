@@ -24,3 +24,7 @@
 ![](https://cloud.githubusercontent.com/assets/19819917/25546254/838a8626-2c62-11e7-9625-d748b9da6027.png)
 
 ![](https://cloud.githubusercontent.com/assets/19819917/25546249/83639b56-2c62-11e7-9a0e-7ce03a086f89.png)
+
+
+
+* App is not on play store yet, kindly find the apk installer at APK file.
