@@ -1,6 +1,7 @@
 package com.example.android.inventory.ui
 
 import android.app.Activity
+import android.arch.lifecycle.ViewModelProviders
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
@@ -13,10 +14,10 @@ import android.text.TextUtils
 import android.view.Menu
 import android.view.MenuItem
 import com.example.android.inventory.R
-import com.example.android.inventory.model.Item
 import com.example.android.inventory.presenter.ItemActivityPresenter
 import com.example.android.inventory.presenter.ItemActivityPresenter.View
 import com.example.android.inventory.repository.ItemRepository
+import com.example.android.inventory.repository.ItemViewModel
 import com.example.android.inventory.util.StringHelper
 import com.example.android.inventory.util.getItem
 import kotlinx.android.synthetic.main.activity_item.*
@@ -24,8 +25,7 @@ import kotlinx.android.synthetic.main.activity_item.*
 class ItemActivity : AppCompatActivity(), View {
     private var mIsActivityIsForEdit: Boolean = false
 
-    private var mItem: Item = Item()
-    private lateinit var mRepository: ItemRepository
+    private lateinit var mViewModel: ItemViewModel
     private lateinit var mPresenter: ItemActivityPresenter
 
     companion object {
@@ -37,40 +37,36 @@ class ItemActivity : AppCompatActivity(), View {
         setContentView(R.layout.activity_item)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+
         if (intent.hasExtra(StringHelper.IS_ACTIVITY_FOR_EDIT)) {
             mIsActivityIsForEdit = intent.getBooleanExtra(StringHelper.IS_ACTIVITY_FOR_EDIT, false)
         }
 
-        mRepository = ItemRepository(application)
-        mPresenter = ItemActivityPresenter(mItem, mRepository, this)
+        mViewModel = ViewModelProviders.of(this).get(ItemViewModel::class.java)
+
+        val repository = ItemRepository(application)
 
         supportActionBar?.let {
             it.title = getString(R.string.edit_Item)
         }
-        if (mIsActivityIsForEdit) {
-            mItem = intent.getItem()
 
-            mPresenter = ItemActivityPresenter(mItem, mRepository, this)
-            mPresenter.loadItemToTheActivity()
+        if (mIsActivityIsForEdit) {
+            mViewModel.item = intent.getItem()
 
             supportActionBar?.let {
-                it.subtitle = mItem.name
+                it.subtitle = mViewModel.item.name
             }
         }
+
+        mPresenter = ItemActivityPresenter(repository, this)
+        mPresenter.loadItemToTheActivity(mViewModel.item)
 
         btn_item_pic.setOnClickListener {
             takePicture()
         }
-    }
 
-    private fun takePicture() {
-        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-
-        if (takePictureIntent.resolveActivity(packageManager) != null) {
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
-        } else {
-            Snackbar.make(cl_item, getString(R.string.cannot_take_picture), Snackbar.LENGTH_SHORT).show()
-        }
+        //update the item in the view model instantly
+        addTextWatchers()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -79,8 +75,7 @@ class ItemActivity : AppCompatActivity(), View {
             val imageBitmap = extras?.get("data") as Bitmap
 
             setItemPicture(imageBitmap)
-
-            mItem.picture = imageBitmap
+            mViewModel.item.picture = imageBitmap
         }
     }
 
@@ -101,7 +96,7 @@ class ItemActivity : AppCompatActivity(), View {
                 return true
             }
             R.id.action_delete -> {
-                mPresenter.deleteItem()
+                mPresenter.deleteItem(mViewModel.item)
                 return true
             }
             R.id.action_save -> {
@@ -117,13 +112,31 @@ class ItemActivity : AppCompatActivity(), View {
     private fun save() = when {
         !TextUtils.isEmpty(ed_item_name.text.toString()) -> {
             when (mIsActivityIsForEdit) {
-                true -> mPresenter.editItem()
-                false -> mPresenter.addItem()
+                true -> mPresenter.editItem(mViewModel.item)
+                false -> mPresenter.addItem(mViewModel.item)
             }
             this@ItemActivity.finish()
         }
         else -> mPresenter.warningAboutRequiredItemName()
     }
+
+    private fun takePicture() {
+        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+
+        if (takePictureIntent.resolveActivity(packageManager) != null) {
+            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
+        } else {
+            Snackbar.make(cl_item, getString(R.string.cannot_take_picture), Snackbar.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun addTextWatchers() {
+        ed_item_name.addTextChangedListener(ItemTextWatcher { newName -> mViewModel.item.name = newName })
+        ed_item_type.addTextChangedListener(ItemTextWatcher { newType -> mViewModel.item.type = newType })
+        ed_item_amount.addTextChangedListener(ItemTextWatcher { newAmount -> mViewModel.item.amount = newAmount })
+        ed_item_supplier.addTextChangedListener(ItemTextWatcher { newSupplier -> mViewModel.item.supplier = newSupplier })
+    }
+
 
     override fun setItemNameText(name: String) = ed_item_name.setText(name)
 
@@ -134,19 +147,6 @@ class ItemActivity : AppCompatActivity(), View {
     override fun setItemSupplierText(supplier: String?) = ed_item_supplier.setText(supplier)
 
     override fun setItemPicture(picture: Bitmap?) = iv_item_thumbnail.setImageBitmap(picture)
-
-    override fun getItemNameText() = ed_item_name.text.toString()
-
-    override fun getItemTypeText() = ed_item_type.text.toString()
-
-    override fun getItemAmountText() = ed_item_amount.text.toString()
-
-    override fun getItemSupplierText() = ed_item_supplier.text.toString()
-
-    override fun getItemPicture(): Bitmap? {
-        val itemImageDrawable = iv_item_thumbnail.drawable as BitmapDrawable
-        return itemImageDrawable.bitmap
-    }
 
     override fun showSnakeBar(message: String, length: Int) = Snackbar.make(cl_item, message, length).show()
 

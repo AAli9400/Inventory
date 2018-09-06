@@ -7,12 +7,11 @@ import com.example.android.inventory.model.Item
 import com.example.android.inventory.repository.ItemRepository
 
 class ItemActivityPresenter(
-        private val mItem: Item,
         private val mRepository: ItemRepository,
         private val mView: View) {
 
-    fun loadItemToTheActivity() {
-        with(mItem) {
+    fun loadItemToTheActivity(item: Item) {
+        with(item) {
             mView.apply {
                 setItemNameText(name)
                 setItemTypeText(type)
@@ -23,37 +22,19 @@ class ItemActivityPresenter(
         }
     }
 
-    fun addItem() {
-        mItem.apply {
-            with(mView) {
-                name = getItemNameText()
-                type = getItemTypeText()
-                amount = getItemAmountText()
-                supplier = getItemSupplierText()
-                picture = getItemPicture()
-            }
-        }
-        mRepository.addItem(mItem)
+    fun addItem(item: Item) {
+        mRepository.addItem(item)
     }
 
-    fun editItem() {
-        mItem.apply {
-            with(mView) {
-                name = getItemNameText()
-                type = getItemTypeText()
-                amount = getItemAmountText()
-                supplier = getItemSupplierText()
-                picture = getItemPicture()
-            }
-        }
-        mRepository.updateItem(mItem)
+    fun editItem(item: Item) {
+        mRepository.updateItem(item)
     }
 
-    fun deleteItem() {
+    fun deleteItem(item: Item) {
         mView.showAlertDialogue(
                 mView.getString(R.string.delete_question),
                 false
-        ) { mRepository.deleteItem(mItem) }
+        ) { mRepository.deleteItem(item) }
     }
 
     fun confirmExitingWithoutSave() {
@@ -72,12 +53,6 @@ class ItemActivityPresenter(
         fun setItemAmountText(amount: String?)
         fun setItemSupplierText(supplier: String?)
         fun setItemPicture(picture: Bitmap?)
-
-        fun getItemNameText(): String
-        fun getItemTypeText(): String?
-        fun getItemAmountText(): String?
-        fun getItemSupplierText(): String?
-        fun getItemPicture(): Bitmap?
 
         fun showSnakeBar(message: String, length: Int)
         fun showAlertDialogue(message: String,
